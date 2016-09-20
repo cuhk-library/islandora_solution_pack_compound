@@ -9,7 +9,6 @@
  */
 
 define('ISLANDORA_COMPOUND_OBJECT_CMODEL', 'islandora:compoundCModel');
-
 /**
  * Implements hook_menu().
  */
@@ -103,6 +102,20 @@ function islandora_compound_object_theme($existing, $type, $theme, $path) {
         'pid' => NULL,
       ),
     ),
+    'islandora_compound_select_list' => array(
+      'file' => 'theme/theme.inc',
+      'template' => 'theme/islandora-compound-select-list',
+      'pattern' => 'islandora_compound_select_list__',
+      'variables' => array(
+        'parent_label' => NULL,
+        'parent_url' => NULL,
+        'previous_pid' => NULL,
+        'next_pid' => NULL,
+        'child_count' => NULL,
+        'siblings' => NULL,
+        'pid' => NULL,
+      ),
+    ),
     'islandora_compound_object_draggable_table' => array(
       'render element' => 'form',
       'file' => 'theme/theme.inc',
@@ -120,12 +133,19 @@ function islandora_compound_object_block_info() {
     'pages' => 'islandora/object/*',
     'cache' => DRUPAL_NO_CACHE,
   );
+  $blocks['compound_navigation_select_list'] = array(
+    'info' => t('Islandora Compound Object Navigation Display by Select List'),
+    'visibility' => BLOCK_VISIBILITY_LISTED,
+    'pages' => 'islandora/object/*',
+    'cache' => DRUPAL_NO_CACHE,
+  );
   $blocks['compound_jail_display'] = array(
     'info' => t('Islandora Compound Object JAIL Display'),
     'visibility' => BLOCK_VISIBILITY_LISTED,
     'pages' => 'islandora/object/*',
     'cache' => DRUPAL_NO_CACHE,
   );
+  
   return $blocks;
 }
 
@@ -134,6 +154,7 @@ function islandora_compound_object_block_info() {
  */
 function islandora_compound_object_block_view($delta = '') {
   $block = array();
+  
   switch ($delta) {
     case 'compound_navigation':
       if (!variable_get('islandora_compound_object_use_jail_view', FALSE)) {
@@ -142,7 +163,14 @@ function islandora_compound_object_block_view($delta = '') {
         $block['content'] = islandora_compound_object_navigation_block();
       }
       break;
-
+    case 'compound_navigation_select_list':
+      $path = current_path();
+      if (!variable_get('islandora_compound_object_use_jail_view', FALSE) && !strpos($path, 'admin') && !strpos($path, 'metadata') && !strpos($path, 'ip_embargo') && !strpos($path, 'manage') && !strpos($path, 'view_mods_as_marcxml') && !strpos($path, 'pages')) {
+        module_load_include('inc', 'islandora_compound_object', 'includes/blocks');
+        $block['subject'] = NULL;
+        $block['content'] = islandora_compound_object_navigation_by_select_list_block();
+      }
+      break;
     case 'compound_jail_display':
       if (variable_get('islandora_compound_object_use_jail_view', FALSE)) {
         module_load_include('inc', 'islandora_compound_object', 'includes/blocks');

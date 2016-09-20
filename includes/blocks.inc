@@ -127,8 +127,9 @@ function islandora_compound_object_navigation_block(AbstractObject $object = NUL
     $children = islandora_compound_object_get_parts($object->id);
     $pid = (!empty($children)) ? $children[0] : $object->id;
     $object = islandora_object_load($pid);
+    $showlist = getShowSelectListOption($object);
     $output = '';
-    if ($object) {
+    if ($object && !$showlist) {
       $compound_info = islandora_compound_object_retrieve_compound_info($object);
       // This object is part of a compound object.
       if (!empty($compound_info)) {
@@ -141,4 +142,73 @@ function islandora_compound_object_navigation_block(AbstractObject $object = NUL
       }
     }
   }
+}
+
+/**
+ * Constructs the default navigation block for a compound.
+ *
+ * @param AbstractObject $object
+ *   If supplied the object to create the block for.
+ *
+ * @return array
+ *   Renderable array for the block.
+ */
+function islandora_compound_object_navigation_by_select_list_block(AbstractObject $object = NULL) {
+  module_load_include('inc', 'islandora', 'includes/utilities');
+  drupal_add_css(drupal_get_path('module', 'islandora_compound_object') . '/css/islandora_compound_object.block.css');
+  $object = $object ? $object : menu_get_object('islandora_object', 2);
+  if ($object) {
+    // If only compound cmodel objects can be compound, this isn't necessary.
+    $children = islandora_compound_object_get_parts($object->id);
+    $currentPID = $object->id;
+    $pid = (!empty($children)) ? $children[0] : $object->id;
+    $object = islandora_object_load($pid);
+    $showlist = getShowSelectListOption($object);
+    /*$layout_switch = variable_get('islandora_compound_object_layout_switch');
+    $layout_switch = explode("\n", $layout_switch);
+    $layout_switch = array_filter($layout_switch, 'trim');
+    $showlist = false;
+    $objectModel = $object->models;
+    foreach($layout_switch as $value){
+      $tempValue = $value;
+      foreach($objectModel as $model){
+        if (trim($tempValue) === trim($model)){
+          $showlist = true;
+        }
+      }
+    }*/
+    $output = '';
+    if ($object && $showlist) {
+      $compound_info = islandora_compound_object_retrieve_compound_info($object);
+      if($currentPID){
+        $compound_info["currentPID"] = $currentPID;
+      }
+      // This object is part of a compound object.
+      if (!empty($compound_info)) {
+        $all_item = theme('islandora_compound_select_list', $compound_info);
+        $output .= $all_item;
+      }
+
+      if (!empty($output)) {
+        return array('#markup' => $output);
+      }
+    }
+  }
+}
+
+function getShowSelectListOption(AbstractObject $object = NULL){
+  $layout_switch = variable_get('islandora_compound_object_layout_switch');
+  $layout_switch = explode("\n", $layout_switch);
+  $layout_switch = array_filter($layout_switch, 'trim');
+  $showlist = false;
+  $objectModel = $object->models;
+  foreach($layout_switch as $value){
+    $tempValue = $value;
+    foreach($objectModel as $model){
+      if (trim($tempValue) === trim($model)){
+        $showlist = true;
+      }
+    }
+  }
+  return $showlist;
 }

@@ -64,7 +64,14 @@ function islandora_compound_object_admin_form($form, &$form_state) {
     '#default_value' => variable_get('islandora_compound_object_relationship', 'isConstituentOf'),
     '#required' => TRUE,
   );
-
+  
+  $form['islandora_compound_object_layout_switch'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Enter CModel name need to use select list layout'),
+    '#default_value' => variable_get('islandora_compound_object_layout_switch', 'islandora:bookCModel'),
+    '#required' => FALSE,
+  );
+  
   $form['islandora_compound_object_use_jail_view'] = array(
     '#type' => 'checkbox',
     '#title' => t('Use alternative, autoloading display for compounds?'),
