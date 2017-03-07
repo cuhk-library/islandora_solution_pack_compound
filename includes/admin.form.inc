@@ -11,6 +11,12 @@
  * Module admin form.
  */
 function islandora_compound_object_admin_form($form, &$form_state) {
+
+  $backend_options = module_invoke_all('islandora_compound_object_query_backends');
+  $map_to_title = function ($backend) {
+    return $backend['title'];
+  };
+
   $form = array();
 
   $form['islandora_compound_object_compound_children'] = array(
@@ -45,7 +51,7 @@ function islandora_compound_object_admin_form($form, &$form_state) {
     '#type' => 'textfield',
     '#title' => t('Solr filter query'),
     '#description' => t('Filter compound object children from Solr results.'),
-    '#default_value' => variable_get('islandora_compound_object_solr_fq', '-RELS_EXT_isConstituentOf_uri_mt:*'),
+    '#default_value' => variable_get('islandora_compound_object_solr_fq', '-RELS_EXT_isConstituentOf_uri_mt:[* TO *]'),
     '#element_validate' => array('islandora_compound_object_solr_fq_validate'),
     '#states' => array(
       'visible' => array(
@@ -81,11 +87,21 @@ function islandora_compound_object_admin_form($form, &$form_state) {
     '#default_value' => variable_get('islandora_compound_object_use_jail_view', FALSE),
     '#element_validate' => array('islandora_compound_object_admin_form_jail_validation'),
   );
+
   $form['islandora_compound_object_show_compound_parents_in_breadcrumbs'] = array(
     '#type' => 'checkbox',
     '#title' => t('Display compound object parents in the breadcrumbs on children objects.'),
     '#default_value' => variable_get('islandora_compound_object_show_compound_parents_in_breadcrumbs', FALSE),
   );
+
+  $form['islandora_compound_object_query_backend'] = array(
+    '#type' => 'radios',
+    '#title' => t('Compound Member Query'),
+    '#description' => t('Select the method that will be used to find the children of the compound objects.'),
+    '#options' => array_map($map_to_title, $backend_options),
+    '#default_value' => variable_get('islandora_compound_object_query_backend', ISLANDORA_COMPOUND_OBJECT_LEGACY_BACKEND),
+  );
+
   return system_settings_form($form);
 }
 

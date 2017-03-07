@@ -4,6 +4,18 @@
 
 The Islandora Compound Object Solution Pack enables generic parent-child relationships between objects. The object view of a compound object is replaced by the view of its first child object. The included "Islandora Compound Object Navigation" block provides a thumbnail navigation of an object's siblings. A "Compound" management tab allows for the addition and removal of parent and child objects for each object.
 
+## Requirements
+
+This module requires the following modules/libraries:
+
+* [Islandora](https://github.com/islandora/islandora)
+
+This module has the following as optional requirements for certain features:
+
+For Islandora Compound Object JAIL Display:
+
+* [JAIL](https://github.com/sebarmeli/JAIL) library 
+
 ## Installation
 
 Install as usual, see [this](https://drupal.org/documentation/install/modules-themes/modules-7) for further information.
@@ -13,12 +25,12 @@ library must be present within sites/all/libraries/JAIL.
 
 ## Configuration
 
-Set the 'Child releationship predicate' and 'Solr filter query', as well as select options in Administration » Islandora » Solution pack configuration » Compound Object Solution Pack (admin/islandora/solution_pack_config/compound_object).
+Set the 'Child relationship predicate' and 'Solr filter query', as well as select options in Administration » Islandora » Solution pack configuration » Compound Object Solution Pack (admin/islandora/solution_pack_config/compound_object).
 
 Optionally, enable the JAIL compound block to utilize the lazy loading image
 ability as outlined below.
 
-![Configuration](https://raw.githubusercontent.com/dmoses/islandora_screenshots/master/compound-admin.png)
+![Configuration](https://cloud.githubusercontent.com/assets/2738244/19966518/7943aba2-a1a2-11e6-8e17-9da13ef23fc6.png)
 
 **Block**:
 

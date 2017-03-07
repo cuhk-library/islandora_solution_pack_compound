@@ -125,7 +125,6 @@ function islandora_compound_object_manage_form_validate($form, &$form_state) {
 
   // Child.
   if (!empty($form_state['values']['child'])) {
-    // Check if valid child pid.
     if (variable_get('islandora_compound_object_compound_children', TRUE)) {
       $compound = FALSE;
       foreach ($object->models as $value) {
@@ -138,54 +137,50 @@ function islandora_compound_object_manage_form_validate($form, &$form_state) {
         form_set_error('child', t('This object is not a compound object'));
       }
     }
-    if (!islandora_is_valid_pid($form_state['values']['child'])) {
-      form_set_error('child', t('Invalid object supplied.'));
-    }
 
     // Do not allow child of self.
     if ($form_state['values']['child'] == $object->id) {
       form_set_error('child', t('An object may not be a child of itself.'));
     }
 
-    // Do not allow repeated child.
+    // Do not allow repeated child and check if valid child pid.
     $child_object = islandora_object_load($form_state['values']['child']);
-    $child_part_of = $child_object->relationships->get(FEDORA_RELS_EXT_URI, $rels_predicate);
-    foreach ($child_part_of as $part) {
-      if ($part['object']['value'] == $object->id) {
-        form_set_error('child', t('The object is already a parent of the child.'));
+    if ($child_object) {
+      $child_part_of = $child_object->relationships->get(FEDORA_RELS_EXT_URI, $rels_predicate);
+      foreach ($child_part_of as $part) {
+        if ($part['object']['value'] == $object->id) {
+          form_set_error('child', t('The object is already a parent of the child.'));
+        }
       }
+    }
+    else {
+      form_set_error('child', t('Invalid object supplied.'));
     }
   }
 
   // Parent.
   if (!empty($form_state['values']['parent'])) {
     // Check if valid parent pid.
-    if (!islandora_is_valid_pid($form_state['values']['parent'])) {
+    $parent_object = islandora_object_load($form_state['values']['parent']);
+    if (!$parent_object) {
       form_set_error('parent', t('Invalid object supplied.'));
     }
-    elseif (variable_get('islandora_compound_object_compound_children', TRUE)) {
-      $parent = islandora_object_load($form_state['values']['parent']);
-      $compound = FALSE;
-      foreach ($parent->models as $value) {
-        if ($value == ISLANDORA_COMPOUND_OBJECT_CMODEL) {
-          $compound = TRUE;
-          break;
+    else {
+      if (variable_get('islandora_compound_object_compound_children', TRUE)) {
+        if (!in_array(ISLANDORA_COMPOUND_OBJECT_CMODEL, $parent_object->models)) {
+          form_set_error('parent', t('The parent object (@pid) is not a compound object!', array('@pid' => $form_state['values']['parent'])));
         }
       }
-      if (!$compound) {
-        form_set_error('parent', t('The parent object (@pid) is not a compound object!', array('@pid' => $form_state['values']['parent'])));
+      // Do not allow parent of self.
+      if ($form_state['values']['parent'] == $object->id) {
+        form_set_error('parent', t('An object may not be the parent of itself.'));
       }
-    }
-    // Do not allow parent of self.
-    if ($form_state['values']['parent'] == $object->id) {
-      form_set_error('parent', t('An object may not be the parent of itself.'));
-    }
-
-    // Do not allow repeated parent.
-    $parent_part_of = $object->relationships->get(FEDORA_RELS_EXT_URI, $rels_predicate);
-    foreach ($parent_part_of as $part) {
-      if ($part['object']['value'] == $form_state['values']['parent']) {
-        form_set_error('parent', t('The object is already a child of the parent.'));
+      // Do not allow repeated parent.
+      $parent_part_of = $object->relationships->get(FEDORA_RELS_EXT_URI, $rels_predicate);
+      foreach ($parent_part_of as $part) {
+        if ($part['object']['value'] == $form_state['values']['parent']) {
+          form_set_error('parent', t('The object is already a child of the parent.'));
+        }
       }
     }
   }

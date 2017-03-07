@@ -9,6 +9,9 @@
  */
 
 define('ISLANDORA_COMPOUND_OBJECT_CMODEL', 'islandora:compoundCModel');
+
+const ISLANDORA_COMPOUND_OBJECT_LEGACY_BACKEND = 'islandora_compound_object_legacy_sparql';
+
 /**
  * Implements hook_menu().
  */
@@ -243,9 +246,9 @@ function islandora_compound_object_islandora_required_objects(IslandoraTuque $co
 }
 
 /**
- * Implements hook_islandora_xml_form_builder_forms().
+ * Implements hook_xml_form_builder_forms().
  */
-function islandora_compound_object_islandora_xml_form_builder_forms() {
+function islandora_compound_object_xml_form_builder_forms() {
   $module_path = drupal_get_path('module', 'islandora_compound_object');
   return array(
     'Compound Object MODS form' => array(
@@ -255,9 +258,9 @@ function islandora_compound_object_islandora_xml_form_builder_forms() {
 }
 
 /**
- * Implements hook_islandora_xml_form_builder_form_associations().
+ * Implements hook_xml_form_builder_form_associations().
  */
-function islandora_compound_object_islandora_xml_form_builder_form_associations() {
+function islandora_compound_object_xml_form_builder_form_associations() {
   return array(
     'islandora_compound_mods_form' => array(
       'content_model' => ISLANDORA_COMPOUND_OBJECT_CMODEL,
@@ -440,57 +443,27 @@ function islandora_compound_object_islandora_solr_query($islandora_solr_query) {
  * Return an array of pids that are part of a compound object.
  */
 function islandora_compound_object_get_parts($pid, $ret_title = FALSE) {
-  $rels_predicate = variable_get('islandora_compound_object_relationship', 'isConstituentOf');
-  $objects = array();
 
-  $connection = islandora_get_tuque_connection();
-  $escaped_pid = str_replace(':', '_', $pid);
-  if ($connection) {
-    $query = <<<EOQ
-PREFIX islandora-rels-ext: <http://islandora.ca/ontology/relsext#>
-SELECT ?object ?title ?seq
-FROM <#ri>
-WHERE {
-  ?object <fedora-model:label> ?title ;
-          <fedora-rels-ext:$rels_predicate> <info:fedora/$pid> .
-  OPTIONAL {
-    ?object islandora-rels-ext:isSequenceNumberOf$escaped_pid ?seq
+  $backend = variable_get('islandora_compound_object_query_backend', ISLANDORA_COMPOUND_OBJECT_LEGACY_BACKEND);
+  $backends = module_invoke_all('islandora_compound_object_query_backends');
+
+  if (!isset($backends[$backend])) {
+    $backend = ISLANDORA_COMPOUND_OBJECT_LEGACY_BACKEND;
   }
-}
-EOQ;
-    $results = $connection->repository->ri->sparqlQuery($query);
 
-    // Sort the objects into their proper order.
-    $sort = function($a, $b) {
-      $a = $a['seq']['value'];
-      $b = $b['seq']['value'];
-      if ($a === $b) {
-        return 0;
-      }
-      if (empty($a)) {
-        return 1;
-      }
-      if (empty($b)) {
-        return -1;
-      }
-      return $a - $b;
-    };
-    uasort($results, $sort);
+  if (isset($backends[$backend]['file'])) {
+    require_once $backends[$backend]['file'];
+  }
 
+  $results = call_user_func($backends[$backend]['callable'], $pid);
+
+  if ($ret_title) {
+    $objects = $results;
+  }
+  else {
+    $objects = array();
     foreach ($results as $result) {
-      $object = islandora_object_load($result['object']['value']);
-      if (islandora_object_access(ISLANDORA_VIEW_OBJECTS, $object)) {
-        if ($ret_title) {
-          $objects[$result['object']['value']] = array(
-            'pid' => $result['object']['value'],
-            'title' => $result['title']['value'],
-            'seq' => $result['seq']['value'],
-          );
-        }
-        else {
-          $objects[] = $result['object']['value'];
-        }
-      }
+      $objects[] = $result['pid'];
     }
   }
 
@@ -548,10 +521,7 @@ function islandora_compound_object_menu_local_tasks_alter(&$data, $router_item, 
   if (variable_get('islandora_compound_object_use_jail_view', FALSE)) {
     $valid_paths = module_invoke_all('islandora_compound_object_management_control_paths');
     if (strpos($root_path, 'islandora/object/%') === 0) {
-      $object = menu_get_object('islandora_object', 2);
-      $children = islandora_compound_object_get_parts($object->id);
-      $pid = (!empty($children)) ? $children[0] : $object->id;
-      $compound_object = islandora_object_load($pid);
+      $compound_object = menu_get_object('islandora_object', 2);
       $compound_info = islandora_compound_object_retrieve_compound_info($compound_object);
       if ($compound_info) {
         drupal_set_title(t('@parent - @child', array(
@@ -619,10 +589,11 @@ function islandora_compound_object_menu_local_tasks_alter(&$data, $router_item, 
  * Helper function to retrieve relevant information about the compound.
  *
  * @param AbstractObject $object
- *   An AbstractObject representing an object within Fedora.
+ *   An AbstractObject representing an object within Fedora. This object can
+ *   either be the child of a compound, or the compound object itself.
  *
  * @return array
- *   An array describing the compound containining:
+ *   An array describing the compound containing:
  *   -parent_label: A string holding the parent label of the compound.
  *   -parent_pid: A string holding the pid of the root compound.
  *   -parent_url: A string containing the URL to the manage link for the root
@@ -631,8 +602,11 @@ function islandora_compound_object_menu_local_tasks_alter(&$data, $router_item, 
  *   an empty string if one does not exist.
  *   -next_pid: A string with the pid of the next pid in the sequence, an empty
  *   string if one does not exist.
+ *   -current_pid: Either the PID of the object passed in, or the first child
+ *   if the object passed in is the parent.
  *   -child_count: An integer of the number of children the object has.
  *   -siblings: An array containing the siblings of the compound.
+ *   -siblings_detailed: An array containing the details of sibling objects.
  *   -pid: A string that is the pid of the current object we are on.
  *   -label: A string containing the label of the object.
  *   -sequence: An integer that is the sequence number of the current object.
@@ -641,40 +615,51 @@ function islandora_compound_object_retrieve_compound_info(AbstractObject $object
   $rels_predicate = variable_get('islandora_compound_object_relationship', 'isConstituentOf');
   $part_of = $object->relationships->get(FEDORA_RELS_EXT_URI, $rels_predicate);
   $info = array();
-  // This object is part of a compound object.
-  if (!empty($part_of)) {
-    // Go through all parents.
-    foreach ($part_of as $part) {
-      $parent_pid = $part['object']['value'];
-      $parent = islandora_object_load($parent_pid);
-      if ($parent) {
-        $siblings = islandora_compound_object_get_parts($parent_pid);
-        $current_key = array_search($object->id, $siblings);
-        $previous_pid = (isset($siblings[$current_key - 1])) ? $siblings[$current_key - 1] : '';
-        $next_pid = (isset($siblings[$current_key + 1])) ? $siblings[$current_key + 1] : '';
 
-        // Check if perms to show link for parent manage.
-        if (islandora_object_manage_access_callback(array(
-          ISLANDORA_METADATA_EDIT, ISLANDORA_MANAGE_PROPERTIES, ISLANDORA_ADD_DS), $parent)) {
-          $parent_url = 'islandora/object/' . $parent_pid . '/manage';
-        }
-        else {
-          $parent_url = FALSE;
-        }
-        $info = array(
-          'parent_label' => $parent->label,
-          'parent_pid' => $parent_pid,
-          'parent_url' => $parent_url,
-          'previous_pid' => $previous_pid,
-          'next_pid' => $next_pid,
-          'child_count' => count($siblings),
-          'siblings' => $siblings,
-          'pid' => $object->id,
-          'label' => $object->label,
-          'sequence' => $current_key + 1,
-        );
-      }
+  // This object is the child of a compound object.
+  if (!empty($part_of)) {
+    // XXX: Handle the case where we are a member of multiple compounds?
+    // For now just grab the last value in the array.
+    $part = array_pop($part_of);
+    $parent_pid = $part['object']['value'];
+    $parent = islandora_object_load($parent_pid);
+  }
+  // Assume this object is the parent compound object.
+  else {
+    $parent_pid = $object->id;
+    $parent = $object;
+  }
+
+  $siblings_detailed = islandora_compound_object_get_parts($parent_pid, TRUE);
+  if (!empty($siblings_detailed)) {
+    $siblings = array_keys($siblings_detailed);
+    $current_key = ($parent === $object) ? 0 : array_search($object->id, $siblings);
+    $previous_pid = (isset($siblings[$current_key - 1])) ? $siblings[$current_key - 1] : '';
+    $next_pid = (isset($siblings[$current_key + 1])) ? $siblings[$current_key + 1] : '';
+
+    // Check if perms to show link for parent manage.
+    if (islandora_object_manage_access_callback(array(
+      ISLANDORA_METADATA_EDIT, ISLANDORA_MANAGE_PROPERTIES, ISLANDORA_ADD_DS), $parent)) {
+      $parent_url = 'islandora/object/' . $parent_pid . '/manage';
     }
+    else {
+      $parent_url = FALSE;
+    }
+
+    $info = array(
+      'parent_label' => $parent->label,
+      'parent_pid' => $parent_pid,
+      'parent_url' => $parent_url,
+      'previous_pid' => $previous_pid,
+      'next_pid' => $next_pid,
+      'current_pid' => $siblings[$current_key],
+      'child_count' => count($siblings),
+      'siblings' => $siblings,
+      'siblings_detailed' => $siblings_detailed,
+      'pid' => $object->id,
+      'label' => $object->label,
+      'sequence' => $current_key + 1,
+    );
   }
   return $info;
 }
@@ -698,4 +683,24 @@ function islandora_compound_object_islandora_get_breadcrumb_query_predicates(Abs
       format_string('fedora-rels-ext:!compound_rels', array('!compound_rels' => variable_get('islandora_compound_object_relationship', 'isConstituentOf'))),
     );
   }
+}
+
+/**
+ * Implements hook_islandora_compound_object_query_backends().
+ */
+function islandora_compound_object_islandora_compound_object_query_backends() {
+  $module_path = drupal_get_path('module', 'islandora_compound_object');
+
+  return array(
+    ISLANDORA_COMPOUND_OBJECT_LEGACY_BACKEND => array(
+      'title' => t('(Default) Legacy SPARQL - Does a SPARQL query followed by an access check.'),
+      'callable' => 'islandora_compound_object_legacy_query_sparql',
+      'file' => "$module_path/includes/backends.inc",
+    ),
+    'islandora_basic_collection_sparql_query_backend' => array(
+      'title' => t('SPARQL - Does a SPARQL query with filters. Generally faster than the default option.'),
+      'callable' => 'islandora_compound_object_query_sparql',
+      'file' => "$module_path/includes/backends.inc",
+    ),
+  );
 }
