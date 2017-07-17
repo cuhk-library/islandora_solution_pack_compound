@@ -119,10 +119,6 @@ function islandora_compound_object_navigation_block(AbstractObject $object = NUL
   drupal_add_css(drupal_get_path('module', 'islandora_compound_object') . '/css/islandora_compound_object.block.css');
   $object = $object ? $object : menu_get_object('islandora_object', 2);
   if ($object) {
-    // If only compound cmodel objects can be compound, this isn't necessary.
-    $children = islandora_compound_object_get_parts($object->id);
-    $pid = (!empty($children)) ? $children[0] : $object->id;
-    $object = islandora_object_load($pid);
     $showlist = getShowSelectListOption($object);
     $output = '';
     if ($object && !$showlist) {
