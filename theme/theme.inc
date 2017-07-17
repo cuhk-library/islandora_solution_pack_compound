@@ -24,7 +24,7 @@ function template_preprocess_islandora_compound_prev_next(array &$variables) {
   // If the parent does not have hasModel islandora:compoundCModel,
   // the first child and parent are different;
   // show the parent TN.
-  
+
   $variables['parent_tn'] = NULL;
   $parent_object = islandora_object_load($variables['parent_pid']);
   if ($parent_object && !in_array(ISLANDORA_COMPOUND_OBJECT_CMODEL, $parent_object->models)) {
@@ -62,6 +62,7 @@ function template_preprocess_islandora_compound_prev_next(array &$variables) {
   }
   $variables['themed_siblings'] = $themed_siblings;
 }
+
 
 /**
  * Theme function for the compound navigation block parts.

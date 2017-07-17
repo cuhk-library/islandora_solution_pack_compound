@@ -15,7 +15,7 @@ function islandora_compound_object_jail_display_block() {
   $block = array();
   $object = menu_get_object('islandora_object', 2);
   if ($object) {
-    $compound_info = islandora_compound_object_retrieve_compound_info($object);
+    $compound_info = islandora_compound_object_retrieve_compound_info($object, TRUE);
     if (!empty($compound_info)) {
       $module_path = drupal_get_path('module', 'islandora_compound_object');
       $jail_path = libraries_get_path('JAIL');

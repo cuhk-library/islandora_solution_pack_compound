@@ -1,3 +1,4 @@
+sudo: required
 language: php
 php:
   - 5.3.3
@@ -22,11 +23,13 @@ before_install:
   - cd $HOME/drupal-*
   - ln -s $TRAVIS_BUILD_DIR sites/all/modules/islandora_solution_pack_compound
   - drush en --user=1 --yes islandora_compound_object
+before_script:
+  # Mysql might time out for long tests, increase the wait timeout.
+  - mysql -e 'SET @@GLOBAL.wait_timeout=1200'
 script:
 #  - ant -buildfile sites/all/modules/islandora_solution_pack_compound/build.xml lint
   - $ISLANDORA_DIR/tests/scripts/line_endings.sh sites/all/modules/islandora_solution_pack_compound
   - drush coder-review --reviews=production,security,style,i18n,potx,sniffer islandora_compound_object
   - phpcpd --names *.module,*.inc,*.test sites/all/modules/islandora_solution_pack_compound
-  - drush test-run --uri=http://localhost:8081 "Islandora Solution Pack Compound"
 notifications:
   irc: "irc.freenode.org#islandora"
