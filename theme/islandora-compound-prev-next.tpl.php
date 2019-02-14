@@ -32,7 +32,9 @@
        theme_image(
          array(
            'path' => $parent_tn,
-           'attributes' => array(),
+           'attributes' => array(
+             'alt' => $parent_label,
+           ),
          )
        ),
        'islandora/object/' . $parent_pid,
@@ -52,6 +54,7 @@
  <?php endif; ?>
 
  <?php if (count($themed_siblings) > 0): ?>
+   <?php $query_params = drupal_get_query_parameters(); ?>
    <div class="islandora-compound-thumbs">
    <?php foreach ($themed_siblings as $sibling): ?>
      <div class="islandora-compound-thumb">
@@ -60,11 +63,21 @@
        theme_image(
          array(
            'path' => $sibling['TN'],
-           'attributes' => array('class' => $sibling['class']),
+           'attributes' => array(
+             'class' => $sibling['class'],
+             'title' => $sibling['label'],
+             'alt' => $sibling['label'],
+           ),
          )
        ),
        'islandora/object/' . $sibling['pid'],
-       array('html' => TRUE)
+       array(
+         'html' => TRUE,
+         'query' => $query_params,
+         'attributes' => array(
+           'title' => $sibling['label'],
+         )
+       )
      );?>
      </div>
    <?php endforeach; // each themed_siblings ?>
