@@ -70,6 +70,8 @@ function template_preprocess_islandora_compound_prev_next(array &$variables) {
 function template_preprocess_islandora_compound_select_list(array &$variables) {
   drupal_add_js(drupal_get_path('module', 'islandora_compound_object') . '/js/caption_width.js');
   $themed_siblings = array();
+  $image_path = drupal_get_path('module', 'islandora');
+  $folder_image_path = "$image_path/images/folder.png";
   $variables['parent_tn'] = NULL;
   if(isset($variables['parent_pid'])){
     $parent_object = islandora_object_load($variables['parent_pid']);
@@ -85,7 +87,6 @@ function template_preprocess_islandora_compound_select_list(array &$variables) {
     }
   }
   
-
   // If the parent TN is not set, only show children if there's more than one.
   // If the parent TN is set, show all children even if there's only one.
 
