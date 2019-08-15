@@ -43,11 +43,14 @@ Navigation between objects linked by a Compound relationship requires a block to
 Options for this module can be set at 
 __Administration » Islandora » Solution pack configuration » Compound Object Solution Pack__  (`admin/islandora/solution_pack_config/compound_object`). Configuration options are documented further in [our Wiki](https://wiki.duraspace.org/display/ISLANDORA/Compound+Solution+Pack).
 
-__New in 7.x-1.12:__ If the Solr Search Module is enabled, you can use Solr instead of SPARQL to query for Compound membership. Options for this can be configured on the __Solr backend__ tab (`admin/islandora/solution_pack_config/compound_object/solr`).
+If the Solr Search Module is enabled, you can use Solr instead of SPARQL to query for Compound membership. Options for this can be configured on the __Solr backend__ tab (`admin/islandora/solution_pack_config/compound_object/solr`).
 
 
-![Configuration](https://user-images.githubusercontent.com/25011926/39889778-d1a91aca-5466-11e8-8eb1-1978cac81104.png)
+![Main Configuration](https://user-images.githubusercontent.com/2857697/63108967-b6192900-bf4d-11e9-8ac9-79324bd3dda6.png)
 
+If you use the Solr backend then you may wish to configure the fields that store the compound (isConstituentOf) relationship and the sequence number.
+
+![Solr Backend Configuration](https://user-images.githubusercontent.com/2857697/63108979-bf09fa80-bf4d-11e9-8246-50efb86a415b.png)
 
 **Theme:**
 
